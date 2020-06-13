@@ -64,11 +64,11 @@ mb_get_release_data_loop <- function(artist_name, sleep_seconds  = 0) {
   offset <- 0
   limit <- 100
   release_data <- list()
-  release_data[[length(release_data) + 1 ]] <- mb_get_release_data_by_artist_helper(artist_name, limit, offset)
+  release_data[[length(release_data) + 1 ]] <- mb_get_release_data_helper(artist_name, limit, offset)
   while (length(release_data[[length(release_data)]]) >= limit) {
     offset <- offset + limit
     Sys.sleep(sleep_seconds)
-    release_data[[length(release_data) + 1 ]] <- mb_get_release_data_by_artist_helper(artist_name, limit, offset)
+    release_data[[length(release_data) + 1 ]] <- mb_get_release_data_helper(artist_name, limit, offset)
   }
 
   release_data <- unlist(release_data, recursive = FALSE)
@@ -81,10 +81,11 @@ mb_get_release_data_by_artist <- function(artist_name) {
   error = function(error) {
     # If error trying to get all data, then sleep between iterations of data pulls
     tryCatch({
+      Sys.sleep(5)
       mb_get_release_data_loop(artist_name, 3)
     },
     error = function(error) {
-      validate(FALSE, "Error retrieving data from MusicBrainz. Please wait a few seconds and try again or try a different search.")
+      validate(FALSE, "Error retrieving data from MusicBrainz. Please wait a few seconds and try again, or try a different search.")
     })
   })
 }
