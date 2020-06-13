@@ -7,14 +7,6 @@ library(shinycssloaders)
 
 source("R/data-retrieval.R")
 
-enter_button_js <- '
-$(document).keyup(function(event) {
-    if ($("#artistName").is(":focus") && (event.key == "Enter")) {
-        $("#makeTable").click();
-    }
-});
-'
-
 # Define UI for application that draws a histogram
 ui <- fluidPage(
     tags$head(tags$style("background-color: #d6d0d0")),
@@ -30,7 +22,7 @@ ui <- fluidPage(
     shiny::tags$br(),
     fluidRow(
         column(4,
-               tags$head(tags$script(HTML(enter_button_js))),
+               tags$head(tags$script(src = "helper-script.js")),
                textInput("artistName", "Artist Name: "),
                actionButton("makeTable", "Search")
         )
@@ -60,7 +52,8 @@ server <- function(input, output) {
                                              paste0(str_c("https://duckduckgo.com/listen to ",
                                                           a_tag, " ", isolate(input$artistName)))),
                                              "/listen", "/?q=listen"),
-                                         "' target='_blank'>", release_title, "</a>")) %>%
+                                         "' target='_blank'>", release_title, "</a>"),
+                           artist_2 = str_c("<span onclick='searchArtistFromTable(this);' style='color: #18bc9c; cursor: pointer;'>", artist_2,"</span>")) %>%
                     select(Collaborator = artist_2,
                            Project = a_tag,
                            `Release Date` = release_date,
@@ -68,7 +61,8 @@ server <- function(input, output) {
                     arrange(`Release Date`, Project, Collaborator)
             },
             escape = FALSE,
-            rownames = FALSE)
+            rownames = FALSE,
+            selection = "none")
 }
 
 # Run the application
