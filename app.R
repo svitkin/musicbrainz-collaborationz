@@ -18,13 +18,14 @@ $(document).keyup(function(event) {
 # Define UI for application that draws a histogram
 ui <- fluidPage(
     tags$head(tags$style("background-color: #d6d0d0")),
-    fluidRow(),
     shiny::tags$br(),
+    fluidRow(),
     # Application title
     column(8,
            tags$h1("MusicBrainz Collaborationz"),
            style = "border: 2px #8B008B solid; font-family: Optima"),
-    fluidRow(),
+    fluidRow(column(12,
+                    HTML("<p>All data is pulled from the <a href='https://musicbrainz.org/' target='_blank'>MusicBrainz</a> database.</p>"))),
     shiny::tags$br(),
     shiny::tags$br(),
     fluidRow(
@@ -68,7 +69,6 @@ server <- function(input, output) {
             },
             escape = FALSE,
             rownames = FALSE)
-
 }
 
 # Run the application

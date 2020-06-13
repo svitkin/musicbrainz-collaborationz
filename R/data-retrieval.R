@@ -59,31 +59,38 @@ mb_get_release_data_by_artist <- function(artist_name, limit, offset) {
 }
 
 mb_get_release_collaborations_by_artist <- function(artist_name) {
-  offset <- 0
-  limit <- 100
-  release_data <- list()
-  release_data[[length(release_data) + 1 ]] <- mb_get_release_data_by_artist(artist_name, limit, offset)
-  while (length(release_data[[length(release_data)]]) >= limit) {
-    offset <- offset + limit
+  tryCatch({
+    offset <- 0
+    limit <- 100
+    release_data <- list()
     release_data[[length(release_data) + 1 ]] <- mb_get_release_data_by_artist(artist_name, limit, offset)
-  }
+    while (length(release_data[[length(release_data)]]) >= limit) {
+      offset <- offset + limit
+      release_data[[length(release_data) + 1 ]] <- mb_get_release_data_by_artist(artist_name, limit, offset)
+    }
 
-  release_data <- unlist(release_data, recursive = FALSE)
+    release_data <- unlist(release_data, recursive = FALSE)
 
-  map_df(release_data,
-         function(rel) {
-           data.frame(release_title = rel$title,
-                      release_date = ifelse(is.null(rel$date), NA, rel$date),
-                      release_type = ifelse(is.null(rel$`release-group`$`primary-type`), NA, rel$`release-group`$`primary-type`),
-                      artist_2 = unique(unlist(lapply(rel$`artist-credit`,
-                                                      function(cred) str_trim(cred$name)))),
-                      stringsAsFactors = FALSE)
-         }) %>%
-    filter(str_to_lower(artist_2) != str_to_lower(artist_name)) %>%
-    mutate(artist_1 = artist_name) %>%
-    mutate(year = as.numeric(str_extract(release_date, "^\\d{4}"))) %>%
-    group_by(release_title, release_type, artist_2, year) %>%
-    arrange(year) %>%
-    slice(1) %>%
-    ungroup()
+    map_df(release_data,
+           function(rel) {
+             data.frame(release_title = rel$title,
+                        release_date = ifelse(is.null(rel$date), NA, rel$date),
+                        release_type = ifelse(is.null(rel$`release-group`$`primary-type`), NA, rel$`release-group`$`primary-type`),
+                        artist_2 = unique(unlist(lapply(rel$`artist-credit`,
+                                                        function(cred) str_trim(cred$name)))),
+                        stringsAsFactors = FALSE)
+           }) %>%
+      filter(str_to_lower(artist_2) != str_to_lower(artist_name)) %>%
+      mutate(artist_1 = artist_name) %>%
+      mutate(year = as.numeric(str_extract(release_date, "^\\d{4}"))) %>%
+      group_by(release_title, release_type, artist_2, year) %>%
+      arrange(year) %>%
+      slice(1) %>%
+      ungroup()
+  },
+  error = function(error) {
+    stop("Error retrieving data from MusicBrainz.")
+  })
+
 }
+
