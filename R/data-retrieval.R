@@ -1,5 +1,3 @@
-rm(list = ls())
-
 library(purrr)
 library(dplyr)
 library(stringr)
@@ -29,11 +27,15 @@ mb_get_artist_id <- function(artist_name) {
   content_data <- httr::content(get_data, type = "application/json")
 
   # return data
-  return(content_data$artists[[1]]$id)
+  list(arid = content_data$artists[[1]]$id,
+       name = content_data$artists[[1]]$name,
+       aliases = unlist(lapply(content_data$artists[[1]]$aliases,
+                              function(alias) alias$name)))
 }
 
 mb_get_release_data_by_artist <- function(artist_name, limit, offset) {
-  arid <- mb_get_artist_id(artist_name)
+  artist_lookup <- mb_get_artist_id(artist_name)
+  arid <- artist_lookup$arid
 
   # url creation
   base_url <- "http://musicbrainz.org/ws/2"
@@ -71,6 +73,9 @@ mb_get_release_collaborations_by_artist <- function(artist_name) {
 
     release_data <- unlist(release_data, recursive = FALSE)
 
+    artist_lookup <- mb_get_artist_id(artist_name)
+    artist_filter_check <- str_to_lower(c(artist_lookup$name, artist_lookup$aliases))
+
     map_df(release_data,
            function(rel) {
              data.frame(release_title = rel$title,
@@ -80,7 +85,7 @@ mb_get_release_collaborations_by_artist <- function(artist_name) {
                                                         function(cred) str_trim(cred$name)))),
                         stringsAsFactors = FALSE)
            }) %>%
-      filter(str_to_lower(artist_2) != str_to_lower(artist_name)) %>%
+      filter(!str_to_lower(artist_2) %in% artist_filter_check) %>%
       mutate(artist_1 = artist_name) %>%
       mutate(year = as.numeric(str_extract(release_date, "^\\d{4}"))) %>%
       group_by(release_title, release_type, artist_2, year) %>%
