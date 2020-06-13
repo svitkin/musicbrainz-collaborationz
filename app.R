@@ -9,7 +9,12 @@ source("R/data-retrieval.R")
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
-    tags$head(tags$style("background-color: #d6d0d0")),
+    tags$head(tags$style(HTML("
+    .shiny-output-error-validation {
+        color: red;
+        font-size: 16px;
+    }
+    "))),
     shiny::tags$br(),
     fluidRow(),
     # Application title
@@ -58,7 +63,7 @@ server <- function(input, output) {
                            Project = a_tag,
                            `Release Date` = release_date,
                            `Release Type` = release_type) %>%
-                    arrange(`Release Date`, Project, Collaborator)
+                    arrange(Collaborator, `Release Date`)
             },
             escape = FALSE,
             rownames = FALSE,

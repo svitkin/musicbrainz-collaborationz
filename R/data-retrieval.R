@@ -3,7 +3,7 @@ library(dplyr)
 library(stringr)
 library(lubridate)
 
-mb_get_artist_id <- function(artist_name) {
+mb_get_artist <- function(artist_name) {
   # url creation
   base_url <- "http://musicbrainz.org/ws/2"
   url <- base::paste(c(base_url, "artist"), collapse = "/")
@@ -33,8 +33,8 @@ mb_get_artist_id <- function(artist_name) {
                               function(alias) alias$name)))
 }
 
-mb_get_release_data_by_artist <- function(artist_name, limit, offset) {
-  artist_lookup <- mb_get_artist_id(artist_name)
+mb_get_release_data_helper <- function(artist_name, limit, offset) {
+  artist_lookup <- mb_get_artist(artist_name)
   arid <- artist_lookup$arid
 
   # url creation
@@ -60,20 +60,38 @@ mb_get_release_data_by_artist <- function(artist_name, limit, offset) {
   httr::content(get_data, type = "application/json")$releases
 }
 
-mb_get_release_collaborations_by_artist <- function(artist_name) {
+mb_get_release_data_loop <- function(artist_name, sleep_seconds  = 0) {
+  offset <- 0
+  limit <- 100
+  release_data <- list()
+  release_data[[length(release_data) + 1 ]] <- mb_get_release_data_by_artist_helper(artist_name, limit, offset)
+  while (length(release_data[[length(release_data)]]) >= limit) {
+    offset <- offset + limit
+    Sys.sleep(sleep_seconds)
+    release_data[[length(release_data) + 1 ]] <- mb_get_release_data_by_artist_helper(artist_name, limit, offset)
+  }
+
+  release_data <- unlist(release_data, recursive = FALSE)
+}
+
+mb_get_release_data_by_artist <- function(artist_name) {
   tryCatch({
-    offset <- 0
-    limit <- 100
-    release_data <- list()
-    release_data[[length(release_data) + 1 ]] <- mb_get_release_data_by_artist(artist_name, limit, offset)
-    while (length(release_data[[length(release_data)]]) >= limit) {
-      offset <- offset + limit
-      release_data[[length(release_data) + 1 ]] <- mb_get_release_data_by_artist(artist_name, limit, offset)
-    }
+    mb_get_release_data_loop(artist_name)
+  },
+  error = function(error) {
+    # If error trying to get all data, then sleep between iterations of data pulls
+    tryCatch({
+      mb_get_release_data_loop(artist_name, 3)
+    },
+    error = function(error) {
+      validate(FALSE, "Error retrieving data from MusicBrainz. Please wait a few seconds and try again or try a different search.")
+    })
+  })
+}
 
-    release_data <- unlist(release_data, recursive = FALSE)
-
-    artist_lookup <- mb_get_artist_id(artist_name)
+mb_get_release_collaborations_by_artist <- function(artist_name) {
+    release_data <- mb_get_release_data_by_artist(artist_name)
+    artist_lookup <- mb_get_artist(artist_name)
     artist_filter_check <- str_to_lower(c(artist_lookup$name, artist_lookup$aliases))
 
     map_df(release_data,
@@ -92,10 +110,5 @@ mb_get_release_collaborations_by_artist <- function(artist_name) {
       arrange(year) %>%
       slice(1) %>%
       ungroup()
-  },
-  error = function(error) {
-    stop("Error retrieving data from MusicBrainz.")
-  })
-
 }
 
