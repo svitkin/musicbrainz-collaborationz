@@ -111,8 +111,9 @@ mb_get_release_collaborations_by_artist <- function(artist_name) {
            }) %>%
       filter(!str_to_lower(artist_2) %in% artist_filter_check) %>%
       mutate(artist_1 = artist_name) %>%
-      mutate(year = as.numeric(str_extract(release_date, "^\\d{4}"))) %>%
-      group_by(release_title, release_type, artist_2, year) %>%
+      mutate(year = as.numeric(str_extract(release_date, "^\\d{4}")),
+             release_title_clean = str_replace_all(release_title, "[:punct:]+", "")) %>%
+      group_by(release_title_clean, release_type, artist_2, year) %>%
       arrange(year) %>%
       slice(1) %>%
       ungroup() %>%
