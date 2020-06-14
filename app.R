@@ -67,7 +67,9 @@ server <- function(input, output) {
             },
             escape = FALSE,
             rownames = FALSE,
-            selection = "none")
+            selection = "none",
+            options = list(language = list(
+                               zeroRecords = "No collaborative projects found.")))
 }
 
 # Run the application

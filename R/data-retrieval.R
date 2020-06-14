@@ -2,6 +2,7 @@ library(purrr)
 library(dplyr)
 library(stringr)
 library(lubridate)
+library(shiny)
 
 mb_get_artist <- function(artist_name) {
   # url creation
@@ -81,10 +82,14 @@ mb_get_release_data_by_artist <- function(artist_name) {
   error = function(error) {
     # If error trying to get all data, then sleep between iterations of data pulls
     tryCatch({
-      Sys.sleep(5)
-      mb_get_release_data_loop(artist_name, 3)
+      showModal(modalDialog("Searching through many results, this may take some time..."))
+      Sys.sleep(10)
+      release_data <- mb_get_release_data_loop(artist_name, 2)
+      removeModal()
+      release_data
     },
     error = function(error) {
+      removeModal()
       validate(FALSE, "Error retrieving data from MusicBrainz. Please wait a few seconds and try again, or try a different search.")
     })
   })
