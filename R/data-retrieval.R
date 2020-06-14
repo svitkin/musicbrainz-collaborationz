@@ -110,6 +110,9 @@ mb_get_release_collaborations_by_artist <- function(artist_name) {
       group_by(release_title, release_type, artist_2, year) %>%
       arrange(year) %>%
       slice(1) %>%
+      ungroup() %>%
+      group_by(release_title, release_type, artist_2) %>%
+      filter(!(n() >= 2 & (is.na(release_date) | release_date == ""))) %>%
       ungroup()
 }
 

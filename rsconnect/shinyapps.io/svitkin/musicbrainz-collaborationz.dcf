@@ -5,8 +5,8 @@ account: svitkin
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2448781
-bundleId: 3266568
+bundleId: 3266752
 url: https://svitkin.shinyapps.io/musicbrainz-collaborationz/
-when: 1592090746.23956
+when: 1592097400.75634
 asMultiple: FALSE
 asStatic: FALSE
