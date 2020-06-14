@@ -5,6 +5,7 @@ library(lubridate)
 library(shiny)
 
 mb_get_artist <- function(artist_name) {
+  message(artist_name)
   # url creation
   base_url <- "http://musicbrainz.org/ws/2"
   url <- base::paste(c(base_url, "artist"), collapse = "/")
@@ -34,8 +35,7 @@ mb_get_artist <- function(artist_name) {
                               function(alias) alias$name)))
 }
 
-mb_get_release_data_helper <- function(artist_name, limit, offset) {
-  artist_lookup <- mb_get_artist(artist_name)
+mb_get_release_data_helper <- function(artist_lookup, limit, offset) {
   arid <- artist_lookup$arid
 
   # url creation
@@ -61,30 +61,30 @@ mb_get_release_data_helper <- function(artist_name, limit, offset) {
   httr::content(get_data, type = "application/json")$releases
 }
 
-mb_get_release_data_loop <- function(artist_name, sleep_seconds  = 0) {
+mb_get_release_data_loop <- function(artist_lookup, sleep_seconds  = 0) {
   offset <- 0
   limit <- 100
   release_data <- list()
-  release_data[[length(release_data) + 1 ]] <- mb_get_release_data_helper(artist_name, limit, offset)
+  release_data[[length(release_data) + 1 ]] <- mb_get_release_data_helper(artist_lookup, limit, offset)
   while (length(release_data[[length(release_data)]]) >= limit) {
     offset <- offset + limit
     Sys.sleep(sleep_seconds)
-    release_data[[length(release_data) + 1 ]] <- mb_get_release_data_helper(artist_name, limit, offset)
+    release_data[[length(release_data) + 1 ]] <- mb_get_release_data_helper(artist_lookup, limit, offset)
   }
 
   release_data <- unlist(release_data, recursive = FALSE)
 }
 
-mb_get_release_data_by_artist <- function(artist_name) {
+mb_get_release_data_by_artist <- function(artist_lookup) {
   tryCatch({
-    mb_get_release_data_loop(artist_name)
+    mb_get_release_data_loop(artist_lookup)
   },
   error = function(error) {
     # If error trying to get all data, then sleep between iterations of data pulls
     tryCatch({
       showModal(modalDialog("Searching through many results, this may take some time..."))
       Sys.sleep(10)
-      release_data <- mb_get_release_data_loop(artist_name, 2)
+      release_data <- mb_get_release_data_loop(artist_lookup, 2)
       removeModal()
       release_data
     },
@@ -96,8 +96,8 @@ mb_get_release_data_by_artist <- function(artist_name) {
 }
 
 mb_get_release_collaborations_by_artist <- function(artist_name) {
-    release_data <- mb_get_release_data_by_artist(artist_name)
     artist_lookup <- mb_get_artist(artist_name)
+    release_data <- mb_get_release_data_by_artist(artist_lookup)
     artist_filter_check <- str_to_lower(c(artist_lookup$name, artist_lookup$aliases))
 
     map_df(release_data,
