@@ -3,6 +3,13 @@ library(dplyr)
 library(stringr)
 library(lubridate)
 library(shiny)
+library(ratelimitr)
+
+httr_get_rate_ltd <- limit_rate(
+  httr::GET,
+  rate(n = 1, period = 1.6)
+)
+
 
 mb_get_artist <- function(artist_name) {
   message(artist_name)
@@ -16,7 +23,7 @@ mb_get_artist <- function(artist_name) {
   url <- httr::build_url(parsed_url)
 
   # api call
-  get_data <- httr::GET(url,
+  get_data <- httr_get_rate_ltd(url,
                         httr::add_headers(
                           Accept ="application/json",
                           "user-agent" = "collaboration R shiny app"))
@@ -48,7 +55,7 @@ mb_get_release_data_helper <- function(artist_lookup, limit, offset) {
   url <- httr::build_url(parsed_url)
 
   # api call
-  get_data <- httr::GET(url,
+  get_data <- httr_get_rate_ltd(url,
                         httr::add_headers(
                           Accept ="application/json",
                           "user-agent" = "collaboration R shiny app"))
@@ -61,45 +68,27 @@ mb_get_release_data_helper <- function(artist_lookup, limit, offset) {
   httr::content(get_data, type = "application/json")$releases
 }
 
-mb_get_release_data_loop <- function(artist_lookup, sleep_seconds  = 0) {
+mb_get_release_data_by_artist <- function(artist_lookup) {
   offset <- 0
   limit <- 100
   release_data <- list()
-  release_data[[length(release_data) + 1 ]] <- mb_get_release_data_helper(artist_lookup, limit, offset)
+  release_data[[length(release_data) + 1 ]] <-
+    mb_get_release_data_helper(artist_lookup, limit, offset)
   while (length(release_data[[length(release_data)]]) >= limit) {
     offset <- offset + limit
-    Sys.sleep(sleep_seconds)
     release_data[[length(release_data) + 1 ]] <- mb_get_release_data_helper(artist_lookup, limit, offset)
   }
 
   release_data <- unlist(release_data, recursive = FALSE)
 }
 
-mb_get_release_data_by_artist <- function(artist_lookup) {
-  tryCatch({
-    mb_get_release_data_loop(artist_lookup)
-  },
-  error = function(error) {
-    # If error trying to get all data, then sleep between iterations of data pulls
-    tryCatch({
-      showModal(modalDialog("Searching through many results, this may take some time..."))
-      Sys.sleep(10)
-      release_data <- mb_get_release_data_loop(artist_lookup, 2)
-      removeModal()
-      release_data
-    },
-    error = function(error) {
-      removeModal()
-      validate(FALSE, "Error retrieving data from MusicBrainz. Please wait a few seconds and try again, or try a different search.")
-    })
-  })
-}
-
 mb_get_release_collaborations_by_artist <- function(artist_name) {
     artist_lookup <- mb_get_artist(artist_name)
     release_data <- mb_get_release_data_by_artist(artist_lookup)
+    # To check that artist collaboration is not just an alias
     artist_filter_check <- str_to_lower(c(artist_lookup$name, artist_lookup$aliases))
 
+    # For each release find the collaborations on the release
     map_df(release_data,
            function(rel) {
              data.frame(release_title = rel$title,
@@ -109,16 +98,15 @@ mb_get_release_collaborations_by_artist <- function(artist_name) {
                                                         function(cred) str_trim(cred$name)))),
                         stringsAsFactors = FALSE)
            }) %>%
+      # Check that collaborator is not just an alias of artist
       filter(!str_to_lower(artist_2) %in% artist_filter_check) %>%
       mutate(artist_1 = artist_name) %>%
-      mutate(year = as.numeric(str_extract(release_date, "^\\d{4}")),
-             release_title_clean = str_replace_all(release_title, "[:punct:]+", "")) %>%
-      group_by(release_title_clean, release_type, artist_2, year) %>%
-      arrange(year) %>%
+      # Clean up release title
+      # If a title has multiple entries with the same collaborator, take earliest entry
+      mutate(release_title_clean = str_replace_all(release_title, "[:punct:]+", "")) %>%
+      group_by(release_title_clean, release_type, artist_2) %>%
+      arrange(release_date) %>%
       slice(1) %>%
-      ungroup() %>%
-      group_by(release_title, release_type, artist_2) %>%
-      filter(!(n() >= 2 & (is.na(release_date) | release_date == ""))) %>%
       ungroup()
 }
 
